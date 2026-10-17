@@ -9,6 +9,16 @@ function sameOrigin(req) {
   try { return new URL(origin).host === req.headers.host; } catch { return false; }
 }
 function validSymbol(value) { return typeof value === "string" && /^[A-Z0-9]{3,20}USDT$/.test(value); }
+function validPushEndpoint(value) {
+  try {
+    const host = new URL(value).hostname.toLowerCase();
+    return host === "fcm.googleapis.com" || host.endsWith(".fcm.googleapis.com") ||
+      host === "push.services.mozilla.com" || host.endsWith(".push.services.mozilla.com") ||
+      host === "updates.push.services.mozilla.com" ||
+      host === "web.push.apple.com" || host.endsWith(".push.apple.com") ||
+      host.endsWith(".notify.windows.com");
+  } catch { return false; }
+}
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -20,7 +30,7 @@ export default async function handler(req, res) {
   try { body = jsonBody(req); } catch { return res.status(400).json({ error: "Invalid JSON." }); }
   const { clientId, subscription, coins, alerts } = body;
   if (typeof clientId !== "string" || !/^[a-zA-Z0-9-]{16,64}$/.test(clientId)) return res.status(400).json({ error: "Invalid client ID." });
-  if (!subscription || typeof subscription.endpoint !== "string" || !subscription.endpoint.startsWith("https://") || !subscription.keys?.p256dh || !subscription.keys?.auth) return res.status(400).json({ error: "Invalid push subscription." });
+  if (!subscription || typeof subscription.endpoint !== "string" || !subscription.endpoint.startsWith("https://") || !validPushEndpoint(subscription.endpoint) || !subscription.keys?.p256dh || !subscription.keys?.auth) return res.status(400).json({ error: "Invalid push subscription." });
   if (!Array.isArray(coins) || coins.length > 25 || !coins.every(c => validSymbol(c?.symbol) && c?.reviewConfirmed === true)) return res.status(400).json({ error: "Invalid reviewed-asset list." });
   if (!Array.isArray(alerts) || alerts.length > 100 || !alerts.every(a =>
     typeof a?.id === "string" && validSymbol(a?.symbol) &&

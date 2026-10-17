@@ -1,0 +1,48 @@
+name: Validate Halal Finance Manager
+
+on:
+  push:
+    paths:
+      - "halal-finance-manager/**"
+      - ".github/workflows/validate-hfm.yml"
+  pull_request:
+    paths:
+      - "halal-finance-manager/**"
+      - ".github/workflows/validate-hfm.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Validate JavaScript syntax
+        working-directory: halal-finance-manager
+        run: |
+          set -euo pipefail
+          find . -path './node_modules' -prune -o -name '*.js' -type f -print0 | xargs -0 -r -n1 node --check
+
+      - name: Validate JSON configuration
+        working-directory: halal-finance-manager
+        run: |
+          set -euo pipefail
+          node --input-type=module -e "import fs from 'node:fs'; for (const file of ['package.json', 'vercel.json', 'manifest.json']) { JSON.parse(fs.readFileSync(file, 'utf8')); console.log('Valid JSON:', file); }"
+
+      - name: Verify required frontend files
+        working-directory: halal-finance-manager
+        run: |
+          set -euo pipefail
+          for file in index.html app.js styles.css service-worker.js manifest.json icon.svg; do
+            test -s "$file"
+          done

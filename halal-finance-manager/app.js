@@ -254,7 +254,7 @@ function render() {
   const select = document.querySelector("#alert-symbol");
   select.innerHTML = coins.length ? coins.map(c=>'<option value="'+escapeHTML(c.symbol)+'">'+escapeHTML(c.symbol)+'</option>').join("") : '<option value="">Add an approved coin first</option>';
   const list = document.querySelector("#alert-list");
-  list.innerHTML = alerts.length ? alerts.map(a=>'<div class="alert-row"><div><b>'+escapeHTML(a.symbol)+' · '+escapeHTML(alertDescription(a))+'</b><small>'+(a.active?"Active":"Triggered")+'</small></div><button class="tiny-btn" data-alert-remove="'+a.id+'">Remove</button></div>').join("") : '<p class="empty">No alerts configured.</p>';
+  list.innerHTML = alerts.length ? alerts.map(a=>'<div class="alert-row"><div><b>'+escapeHTML(a.symbol)+' · '+escapeHTML(alertDescription(a))+'</b><small>'+(a.active?"Active":"Triggered")+'</small></div><button class="tiny-btn" data-alert-remove="'+escapeHTML(a.id)+'">Remove</button></div>').join("") : '<p class="empty">No alerts configured.</p>';
 }
 function alertDescription(a) {
   const p = prices[a.symbol]?.last;

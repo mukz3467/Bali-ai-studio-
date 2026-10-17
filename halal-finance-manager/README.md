@@ -87,7 +87,7 @@ In GitHub repository Settings → Secrets and variables → Actions, add:
 - `HFM_APP_BASE_URL`: the deployed HTTPS origin, with no trailing slash.
 - `HFM_CRON_SECRET`: exactly the same value as Vercel's `CRON_SECRET`.
 
-Enable GitHub Actions and run **Monitor Halal Finance push alerts** once with **Run workflow** to test it. The workflow is scheduled every five minutes, but GitHub may delay scheduled runs; this is not a guaranteed real-time trading alert service. Check the workflow run logs and Vercel function logs if an alert is not delivered.
+After deployment, open `https://YOUR-APP-DOMAIN/api/push/status` to check the three configuration flags (`storageConfigured`, `vapidConfigured`, and `schedulerConfigured`) without exposing secret values. All three must be `true`. Enable GitHub Actions and run **Monitor Halal Finance push alerts** once with **Run workflow** to test it. The workflow is scheduled every five minutes, but GitHub may delay scheduled runs; this is not a guaranteed real-time trading alert service. Check the workflow run logs and Vercel function logs if an alert is not delivered.
 
 ### Push-alert behaviour and limitations
 - After deployment and configuration, tap **Enable background push** on the HTTPS app and allow notifications.

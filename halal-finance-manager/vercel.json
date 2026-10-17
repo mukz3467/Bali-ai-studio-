@@ -1,5 +1,17 @@
 {
   "functions": {
-    "api/**/*.js": { "maxDuration": 10 }
-  }
+    "api/**/*.js": {
+      "maxDuration": 10
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/robots.txt",
+      "destination": "/api/seo/robots"
+    },
+    {
+      "source": "/sitemap.xml",
+      "destination": "/api/seo/sitemap"
+    }
+  ]
 }

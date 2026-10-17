@@ -5,6 +5,9 @@ let alerts = read(STORE.alerts, []);
 let prices = {};
 let tickers = {};
 let busy = false;
+const candleCache = {};
+const candleFetchedAt = {};
+const CANDLE_REFRESH_MS = 5 * 60 * 1000;
 
 function read(key, fallback) { try { const v = JSON.parse(localStorage.getItem(key)); return v ?? fallback; } catch { return fallback; } }
 function save() { localStorage.setItem(STORE.coins, JSON.stringify(coins)); localStorage.setItem(STORE.alerts, JSON.stringify(alerts)); }
@@ -29,7 +32,14 @@ async function refresh() {
     for (const symbol of symbols) {
       if (!tickers[symbol]) { prices[symbol] = { error: "Not found / unavailable" }; continue; }
       try {
-        const klines = await getJSON("/api/v3/klines?symbol=" + encodeURIComponent(symbol) + "&interval=1h&limit=200");
+        // Refresh hourly candles every 5 minutes to reduce API load.
+        // Exclude the still-forming candle because its close is not final.
+        if (!candleCache[symbol] || Date.now() - (candleFetchedAt[symbol] || 0) >= CANDLE_REFRESH_MS) {
+          const rawKlines = await getJSON("/api/v3/klines?symbol=" + encodeURIComponent(symbol) + "&interval=1h&limit=200");
+          candleCache[symbol] = rawKlines.filter(k => Number(k[6]) < Date.now());
+          candleFetchedAt[symbol] = Date.now();
+        }
+        const klines = candleCache[symbol];
         const closes = klines.map(k => Number(k[4]));
         const returns = [];
         for (let i=1;i<closes.length;i++) if (closes[i-1] > 0) returns.push(Math.log(closes[i]/closes[i-1]));
@@ -195,7 +205,7 @@ document.querySelector("#alert-form").addEventListener("submit",e=>{
 document.addEventListener("click",e=>{
   const remove=e.target.closest("[data-remove]");
   const removeAlert=e.target.closest("[data-alert-remove]");
-  if(remove){coins=coins.filter(c=>c.symbol!==remove.dataset.remove);alerts=alerts.filter(a=>a.symbol!==remove.dataset.remove);delete prices[remove.dataset.remove];save();render();toast("Coin and its alerts removed.");}
+  if(remove){coins=coins.filter(c=>c.symbol!==remove.dataset.remove);alerts=alerts.filter(a=>a.symbol!==remove.dataset.remove);delete prices[remove.dataset.remove];delete candleCache[remove.dataset.remove];delete candleFetchedAt[remove.dataset.remove];save();render();renderQuantLab();toast("Coin and its alerts removed.");}
   if(removeAlert){alerts=alerts.filter(a=>a.id!==removeAlert.dataset.alertRemove);save();render();}
 });
 document.querySelector("#scan-btn").addEventListener("click",refresh);

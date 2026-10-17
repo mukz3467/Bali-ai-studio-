@@ -42,6 +42,8 @@ Crypto markets are volatile. Historical behaviour does not guarantee future resu
 ## Quant lab update
 - Fetches up to 200 hourly candles per user-approved asset.
 - Adds a transparent momentum-based next-hour drift heuristic using recent 6-hour and 24-hour returns plus a trend-difference term.
-- Adds a walk-forward directional baseline backtest: each forecast uses only candles available before the next candle being evaluated.
-- Shows historical directional hit rate and sample count. This is not a calibrated probability, not an AI/ML model, and not evidence of profitability. Fees, spread, slippage, and market-regime changes are not included.
+- Adds a strict one-step walk-forward evaluation: every forecast uses only candles available before the held-out next-hour candle.
+- Reports directional hit rate only for non-weak signals, signal coverage, a trailing-majority direction benchmark, and mean absolute error of the displayed drift estimate.
+- Requires at least 60 hourly closes before reporting backtest metrics; the number of tested hours and number of actual signals are shown separately.
+- This remains a transparent heuristic, not a trained AI/ML model, calibrated probability, or evidence of profitability. Metrics use a small recent rolling sample and can change sharply by regime; fees, spread, slippage, latency, and execution constraints are not included.
 - Forecast estimates are capped to reduce extreme display values; that cap is a UI safeguard, not a confidence interval.

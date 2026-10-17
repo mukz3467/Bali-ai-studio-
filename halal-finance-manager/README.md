@@ -47,3 +47,11 @@ Crypto markets are volatile. Historical behaviour does not guarantee future resu
 - Requires at least 60 hourly closes before reporting backtest metrics; the number of tested hours and number of actual signals are shown separately.
 - This remains a transparent heuristic, not a trained AI/ML model, calibrated probability, or evidence of profitability. Metrics use a small recent rolling sample and can change sharply by regime; fees, spread, slippage, latency, and execution constraints are not included.
 - Forecast estimates are capped to reduce extreme display values; that cap is a UI safeguard, not a confidence interval.
+
+
+## Quant Lab evaluation notes
+- Requests up to 1,000 hourly candles (roughly 41 days when data is complete) and excludes the still-forming candle.
+- Walk-forward evaluation uses only prior closes to form each forecast and tests the following hourly close.
+- The spot-only cost-aware metric enters long positions only on bullish signals; bearish signals remain in cash.
+- The displayed 0.20% round-trip cost is an illustrative assumption, not a Binance fee quote or measured spread/slippage. Replace it with your actual fee tier and realistic execution costs before relying on results.
+- Historical hit rate is not a calibrated probability and does not guarantee future performance. Candle history is limited, the forecast remains heuristic, and this is not a production-validated trading system.

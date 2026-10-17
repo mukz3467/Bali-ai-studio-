@@ -29,7 +29,7 @@ async function refresh() {
     for (const symbol of symbols) {
       if (!tickers[symbol]) { prices[symbol] = { error: "Not found / unavailable" }; continue; }
       try {
-        const klines = await getJSON("/api/v3/klines?symbol=" + encodeURIComponent(symbol) + "&interval=1h&limit=25");
+        const klines = await getJSON("/api/v3/klines?symbol=" + encodeURIComponent(symbol) + "&interval=1h&limit=200");
         const closes = klines.map(k => Number(k[4]));
         const returns = [];
         for (let i=1;i<closes.length;i++) if (closes[i-1] > 0) returns.push(Math.log(closes[i]/closes[i-1]));
@@ -37,17 +37,71 @@ async function refresh() {
         const variance = returns.reduce((a,b)=>a+(b-mean)**2,0) / Math.max(1,returns.length-1);
         const sigma = Math.sqrt(variance);
         const last = Number(tickers[symbol].lastPrice);
-        prices[symbol] = { last, change: Number(tickers[symbol].priceChangePercent), volume: Number(tickers[symbol].quoteVolume), sigma, rangeLow: last*Math.exp(-1.96*sigma), rangeHigh: last*Math.exp(1.96*sigma), updated: Date.now() };
+        const forecast = buildForecast(closes);
+        const backtest = runWalkForwardBacktest(closes);
+        prices[symbol] = { last, change: Number(tickers[symbol].priceChangePercent), volume: Number(tickers[symbol].quoteVolume), sigma, rangeLow: last*Math.exp(-1.96*sigma), rangeHigh: last*Math.exp(1.96*sigma), forecast, backtest, updated: Date.now() };
       } catch (e) { prices[symbol] = { ...(prices[symbol]||{}), last:Number(tickers[symbol].lastPrice), change:Number(tickers[symbol].priceChangePercent), error:"Historical candles unavailable" }; }
     }
     checkAlerts();
     render();
+    renderQuantLab();
     document.querySelector("#updated-at").textContent = new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",second:"2-digit"});
   } catch (e) {
     document.querySelector("#connection-label").textContent = "Data unavailable";
     toast("Market data unavailable. Check connection or Binance API access.");
   } finally { busy = false; }
 }
+
+function mean(values) { return values.length ? values.reduce((a,b)=>a+b,0)/values.length : 0; }
+function clamp(value, low, high) { return Math.max(low, Math.min(high, value)); }
+function buildForecast(closes) {
+  if (closes.length < 30) return null;
+  const returns = [];
+  for (let i=1;i<closes.length;i++) if (closes[i-1] > 0 && closes[i] > 0) returns.push(Math.log(closes[i]/closes[i-1]));
+  const recent6 = returns.slice(-6), recent24 = returns.slice(-24);
+  const prior24 = returns.slice(-48,-24);
+  const momentum6 = mean(recent6), momentum24 = mean(recent24);
+  const trend = mean(recent24) - mean(prior24);
+  const raw = 0.45*momentum6 + 0.35*momentum24 + 0.20*trend;
+  const sigma = Math.sqrt(mean(recent24.map(r=>(r-momentum24)**2)));
+  const expectedPct = clamp((Math.exp(raw)-1)*100, -3, 3);
+  const score = sigma > 0 ? clamp(raw / sigma, -1, 1) : 0;
+  const direction = score > 0.12 ? "Upward bias" : score < -0.12 ? "Downward bias" : "No clear edge";
+  return { direction, expectedPct, score, momentum6: (Math.exp(momentum6*6)-1)*100, momentum24: (Math.exp(momentum24*24)-1)*100, sigmaPct: sigma*100 };
+}
+function runWalkForwardBacktest(closes) {
+  // One-step directional baseline: at each point, use only the previous 6 hourly returns.
+  // No future candles enter a forecast. Excludes flat/near-flat forecasts from hit-rate denominator.
+  if (closes.length < 40) return null;
+  let correct=0, total=0, signalReturn=0, signals=0;
+  for (let i=25;i<closes.length-1;i++) {
+    const history=[];
+    for(let j=Math.max(1,i-5);j<=i;j++) if(closes[j-1]>0) history.push(Math.log(closes[j]/closes[j-1]));
+    const forecast=mean(history);
+    const actual=closes[i+1]>0?Math.log(closes[i+1]/closes[i]):0;
+    if (Math.abs(forecast)<0.00005) continue;
+    total++;
+    if ((forecast>0 && actual>0)||(forecast<0 && actual<0)) correct++;
+    signalReturn += Math.sign(forecast)*actual;
+    signals++;
+  }
+  return { samples: total, accuracy: total ? correct/total*100 : null, avgSignalReturn: signals ? (Math.exp(signalReturn/signals)-1)*100 : null };
+}
+function renderQuantLab() {
+  const el = document.querySelector("#quant-rows");
+  if (!el) return;
+  const available = coins.filter(c=>prices[c.symbol]?.forecast);
+  if (!available.length) {
+    el.innerHTML = '<div class="quant-empty">Add an independently reviewed asset and wait for hourly candle data. Forecasts are heuristic estimates, not AI certainty.</div>';
+    return;
+  }
+  el.innerHTML = available.map(c=>{
+    const p=prices[c.symbol], f=p.forecast, b=p.backtest;
+    const cls=f.score>0.12?"positive":f.score< -0.12?"negative":"";
+    return '<article class="quant-card"><div class="quant-card-head"><b>'+escapeHTML(c.symbol)+'</b><span class="tag">'+escapeHTML(f.direction)+'</span></div><div class="quant-big '+cls+'">'+(f.expectedPct>=0?"+":"")+f.expectedPct.toFixed(3)+'%</div><div class="quant-caption">Heuristic next-hour drift estimate · not a target</div><div class="quant-metrics"><span>6h momentum <b>'+f.momentum6.toFixed(2)+'%</b></span><span>24h momentum <b>'+f.momentum24.toFixed(2)+'%</b></span><span>Backtest directional hit rate <b>'+(b&&b.accuracy!==null?b.accuracy.toFixed(1)+'%':'Not enough data')+'</b></span><span>Test samples <b>'+(b?b.samples:'—')+'</b></span></div></article>';
+  }).join("");
+}
+
 function render() {
   const body = document.querySelector("#coin-rows");
   document.querySelector("#watch-count").textContent = coins.length;

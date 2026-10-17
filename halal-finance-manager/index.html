@@ -15,6 +15,7 @@
       <div class="nav-label">WORKSPACE</div>
       <a class="nav-item active" href="#overview">▦ <span>Overview</span></a>
       <a class="nav-item" href="#watchlist">◎ <span>Halal Watchlist</span></a>
+      <a class="nav-item" href="#quant-lab">⌁ <span>Quant Lab</span></a>
       <a class="nav-item" href="#alerts">♢ <span>Alerts</span><span id="alert-count" class="nav-count">0</span></a>
       <div class="sidebar-note"><span class="live-dot"></span><span>Public market data<br><b id="connection-label">Connecting…</b></span></div>
       <div class="sidebar-foot">Manual trading only<br><span>No orders are placed.</span></div>
@@ -46,6 +47,8 @@
         <div class="table-wrap"><table><thead><tr><th>ASSET</th><th>LAST PRICE</th><th>24H CHANGE</th><th>VOLATILITY</th><th>1H EST. RANGE*</th><th>STATUS</th><th></th></tr></thead><tbody id="coin-rows"><tr><td colspan="7" class="empty">No approved coins added. Complete your Shariah review, then add a symbol above.</td></tr></tbody></table></div>
         <p class="helper-text">*The range is a simple volatility-based statistical estimate, not a validated AI forecast or a promise of future price.</p>
       </section>
+
+      <section class="panel" id="quant-lab"><div class="section-head"><div><p class="eyebrow">STATISTICS LAB</p><h2>Forecast & walk-forward test</h2><p class="section-description">Uses up to 200 hourly candles per approved asset. The model is a transparent momentum heuristic, not machine learning.</p></div></div><div id="quant-rows" class="quant-grid"><div class="quant-empty">Waiting for approved assets and historical candles…</div></div><p class="helper-text">Backtest hit rate is historical directional accuracy for a simple one-hour baseline, before fees/slippage. It is not a probability that the next trade will win. Small samples and changing market regimes can mislead.</p></section>
 
       <div class="lower-grid">
         <section class="panel" id="alerts"><div class="section-head"><div><p class="eyebrow">SIGNAL CENTER</p><h2>Alert rules</h2></div></div>

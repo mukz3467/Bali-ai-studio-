@@ -1,0 +1,131 @@
+const API = "https://api.binance.com";
+const STORE = { coins: "hfm-approved-coins-v1", alerts: "hfm-alerts-v1" };
+let coins = read(STORE.coins, []);
+let alerts = read(STORE.alerts, []);
+let prices = {};
+let tickers = {};
+let busy = false;
+
+function read(key, fallback) { try { const v = JSON.parse(localStorage.getItem(key)); return v ?? fallback; } catch { return fallback; } }
+function save() { localStorage.setItem(STORE.coins, JSON.stringify(coins)); localStorage.setItem(STORE.alerts, JSON.stringify(alerts)); }
+function fmt(n) { if (!Number.isFinite(n)) return "—"; return n >= 100 ? n.toLocaleString(undefined,{maximumFractionDigits:2}) : n >= 1 ? n.toLocaleString(undefined,{maximumFractionDigits:4}) : n.toLocaleString(undefined,{maximumFractionDigits:8}); }
+function pct(n) { return (n >= 0 ? "+" : "") + n.toFixed(2) + "%"; }
+function toast(message) { const el = document.querySelector("#toast"); el.textContent = message; el.classList.add("show"); clearTimeout(toast.timer); toast.timer = setTimeout(() => el.classList.remove("show"), 3500); }
+function notify(title, body) {
+  toast(title + " — " + body);
+  try { if ("vibrate" in navigator) navigator.vibrate([180,80,180]); } catch {}
+  if ("Notification" in window && Notification.permission === "granted") { try { new Notification(title, { body, icon: "./icon.svg" }); } catch {} }
+}
+async function getJSON(path) { const r = await fetch(API + path); if (!r.ok) throw new Error("Binance HTTP " + r.status); return r.json(); }
+async function refresh() {
+  if (busy) return; busy = true;
+  document.querySelector("#connection-label").textContent = "Refreshing…";
+  try {
+    const data = await getJSON("/api/v3/ticker/24hr");
+    tickers = Object.fromEntries(data.map(t => [t.symbol, t]));
+    document.querySelector("#connection-label").textContent = "Connected";
+    document.querySelector("#connection-label").previousElementSibling?.classList.add("live-dot");
+    const symbols = coins.map(c => c.symbol);
+    for (const symbol of symbols) {
+      if (!tickers[symbol]) { prices[symbol] = { error: "Not found / unavailable" }; continue; }
+      try {
+        const klines = await getJSON("/api/v3/klines?symbol=" + encodeURIComponent(symbol) + "&interval=1h&limit=25");
+        const closes = klines.map(k => Number(k[4]));
+        const returns = [];
+        for (let i=1;i<closes.length;i++) if (closes[i-1] > 0) returns.push(Math.log(closes[i]/closes[i-1]));
+        const mean = returns.reduce((a,b)=>a+b,0) / (returns.length || 1);
+        const variance = returns.reduce((a,b)=>a+(b-mean)**2,0) / Math.max(1,returns.length-1);
+        const sigma = Math.sqrt(variance);
+        const last = Number(tickers[symbol].lastPrice);
+        prices[symbol] = { last, change: Number(tickers[symbol].priceChangePercent), volume: Number(tickers[symbol].quoteVolume), sigma, rangeLow: last*Math.exp(-1.96*sigma), rangeHigh: last*Math.exp(1.96*sigma), updated: Date.now() };
+      } catch (e) { prices[symbol] = { ...(prices[symbol]||{}), last:Number(tickers[symbol].lastPrice), change:Number(tickers[symbol].priceChangePercent), error:"Historical candles unavailable" }; }
+    }
+    checkAlerts();
+    render();
+    document.querySelector("#updated-at").textContent = new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",second:"2-digit"});
+  } catch (e) {
+    document.querySelector("#connection-label").textContent = "Data unavailable";
+    toast("Market data unavailable. Check connection or Binance API access.");
+  } finally { busy = false; }
+}
+function render() {
+  const body = document.querySelector("#coin-rows");
+  document.querySelector("#watch-count").textContent = coins.length;
+  document.querySelector("#online-count").textContent = coins.filter(c => Number.isFinite(prices[c.symbol]?.last)).length;
+  document.querySelector("#active-count").textContent = alerts.filter(a=>a.active).length;
+  document.querySelector("#alert-count").textContent = alerts.filter(a=>a.active).length;
+  if (!coins.length) body.innerHTML = '<tr><td colspan="7" class="empty">No approved coins added. Complete your Shariah review, then add a symbol above.</td></tr>';
+  else body.innerHTML = coins.map(c => {
+    const p = prices[c.symbol] || {};
+    const ch = Number.isFinite(p.change) ? p.change : NaN;
+    const changeClass = ch >= 0 ? "positive" : "negative";
+    return '<tr><td><span class="asset-name">'+escapeHTML(c.symbol.replace(/USDT$/,""))+'</span><span class="asset-sub">'+escapeHTML(c.symbol)+' · user-reviewed</span></td><td>'+(Number.isFinite(p.last)?fmt(p.last):'<span class="asset-sub">'+(p.error||"Loading…")+'</span>')+'</td><td class="'+changeClass+'">'+(Number.isFinite(ch)?pct(ch):"—")+'</td><td>'+(Number.isFinite(p.sigma)?(p.sigma*100).toFixed(2)+"% / hour":"—")+'</td><td>'+(Number.isFinite(p.rangeLow)?fmt(p.rangeLow)+" – "+fmt(p.rangeHigh):"—")+'</td><td><span class="tag">Approved by user</span></td><td><button class="tiny-btn" data-remove="'+escapeHTML(c.symbol)+'">Remove</button></td></tr>';
+  }).join("");
+  const select = document.querySelector("#alert-symbol");
+  select.innerHTML = coins.length ? coins.map(c=>'<option value="'+escapeHTML(c.symbol)+'">'+escapeHTML(c.symbol)+'</option>').join("") : '<option value="">Add an approved coin first</option>';
+  const list = document.querySelector("#alert-list");
+  list.innerHTML = alerts.length ? alerts.map(a=>'<div class="alert-row"><div><b>'+escapeHTML(a.symbol)+' · '+escapeHTML(alertDescription(a))+'</b><small>'+(a.active?"Active":"Triggered")+'</small></div><button class="tiny-btn" data-alert-remove="'+a.id+'">Remove</button></div>').join("") : '<p class="empty">No alerts configured.</p>';
+}
+function alertDescription(a) {
+  const p = prices[a.symbol]?.last;
+  if (a.type==="below") return "price ≤ "+fmt(a.value);
+  if (a.type==="above") return "price ≥ "+fmt(a.value);
+  if (a.type==="move-down") return "falls "+a.value+"% from setup price";
+  return "rises "+a.value+"% from setup price";
+}
+function checkAlerts() {
+  for (const a of alerts) {
+    if (!a.active) continue;
+    const p = prices[a.symbol]?.last;
+    if (!Number.isFinite(p)) continue;
+    let hit = false;
+    if (a.type==="below") hit = p <= a.value;
+    if (a.type==="above") hit = p >= a.value;
+    if (a.type==="move-down") hit = p <= a.base*(1-a.value/100);
+    if (a.type==="move-up") hit = p >= a.base*(1+a.value/100);
+    if (hit) { a.active=false; a.triggeredAt=Date.now(); save(); notify("Halal Finance alert: "+a.symbol, "Price "+fmt(p)+" reached your configured condition. Review the market manually."); }
+  }
+}
+function escapeHTML(v) { return String(v).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+document.querySelector("#add-form").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const input = document.querySelector("#symbol-input");
+  const symbol = input.value.trim().toUpperCase().replace(/[^A-Z0-9]/g,"");
+  if (!document.querySelector("#halal-confirm").checked) return toast("Confirm your independent Shariah review before adding an asset.");
+  if (!symbol.endsWith("USDT")) return toast("Enter a Binance Spot USDT pair, for example BTCUSDT.");
+  if (coins.some(c=>c.symbol===symbol)) return toast("This coin is already in your watchlist.");
+  try {
+    const info = await getJSON("/api/v3/exchangeInfo?symbol="+encodeURIComponent(symbol));
+    const match = info.symbols?.find(s=>s.symbol===symbol && s.status==="TRADING" && s.isSpotTradingAllowed);
+    if (!match) return toast("This symbol is not an available Spot trading pair.");
+    coins.push({symbol, reviewedAt:new Date().toISOString(), reviewConfirmed:true});
+    save(); input.value=""; document.querySelector("#halal-confirm").checked=false;
+    await refresh(); toast(symbol+" added. Reminder: the app records your review; it does not certify halal status.");
+  } catch { toast("Could not verify this Spot pair. Check the symbol and try again."); }
+});
+document.querySelector("#alert-form").addEventListener("submit",e=>{
+  e.preventDefault();
+  const symbol=document.querySelector("#alert-symbol").value;
+  if(!symbol || !coins.some(c=>c.symbol===symbol)) return toast("Add an approved coin first.");
+  const type=document.querySelector("#alert-type").value;
+  const value=Number(document.querySelector("#alert-value").value);
+  if(!Number.isFinite(value)||value<=0) return toast("Enter a value greater than zero.");
+  if((type==="move-down"||type==="move-up")&&value>=100) return toast("Percentage movement must be below 100%.");
+  const base=prices[symbol]?.last;
+  if(!Number.isFinite(base)) return toast("Wait for live price data before creating this alert.");
+  alerts.unshift({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),symbol,type,value,base,active:true,createdAt:Date.now()});
+  save(); render(); document.querySelector("#alert-value").value=""; toast("Alert saved. Keep this page open for browser-session monitoring.");
+});
+document.addEventListener("click",e=>{
+  const remove=e.target.closest("[data-remove]");
+  const removeAlert=e.target.closest("[data-alert-remove]");
+  if(remove){coins=coins.filter(c=>c.symbol!==remove.dataset.remove);alerts=alerts.filter(a=>a.symbol!==remove.dataset.remove);delete prices[remove.dataset.remove];save();render();toast("Coin and its alerts removed.");}
+  if(removeAlert){alerts=alerts.filter(a=>a.id!==removeAlert.dataset.alertRemove);save();render();}
+});
+document.querySelector("#scan-btn").addEventListener("click",refresh);
+document.querySelector("#notify-btn").addEventListener("click",async()=>{
+  if(!("Notification" in window)) return toast("This browser does not support web notifications.");
+  const permission=await Notification.requestPermission();
+  toast(permission==="granted"?"Notifications enabled for this browser.":"Notification permission was not granted.");
+});
+render(); refresh(); setInterval(refresh,30000);

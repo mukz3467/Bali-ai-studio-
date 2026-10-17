@@ -23,9 +23,21 @@
   <title>Halal Crypto Market Monitor | Halal Finance Manager Pro</title>
   <link rel="canonical" id="canonical-url" href="./" />
   <script>
-    (() => {
+    (async () => {
       const canonical = document.getElementById("canonical-url");
-      if (canonical && window.location.protocol === "https:") canonical.href = new URL("./", window.location.href).href;
+      if (!canonical) return;
+      try {
+        const response = await fetch("/api/seo/config", { cache: "no-store" });
+        if (!response.ok) throw new Error("SEO config unavailable");
+        const config = await response.json();
+        if (typeof config.siteUrl === "string" && /^https:\/\//i.test(config.siteUrl)) {
+          canonical.href = new URL("/", config.siteUrl).href;
+        } else {
+          canonical.remove();
+        }
+      } catch {
+        canonical.remove();
+      }
     })();
   </script>
   <link rel="manifest" href="./manifest.json" />

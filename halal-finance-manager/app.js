@@ -28,7 +28,7 @@ function getClientId() {
 async function syncPushConfig() {
   if (localStorage.getItem("hfm-push-enabled") !== "true" || !("serviceWorker" in navigator)) return;
   try {
-    const registration = await navigator.serviceWorker.getRegistration("./");
+    const registration = await navigator.serviceWorker.getRegistration();
     const subscription = await registration?.pushManager?.getSubscription();
     if (!subscription) {
       localStorage.setItem("hfm-push-enabled", "false");
@@ -57,7 +57,10 @@ async function syncPushConfig() {
       render();
     }
   } catch (error) {
-    console.warn("Push settings sync failed:", error?.message);
+    localStorage.setItem("hfm-push-enabled", "false");
+    const button = document.querySelector("#notify-btn");
+    if (button) button.textContent = "Enable background push";
+    console.warn("Push settings sync failed; browser-session alerts re-enabled:", error?.message);
   }
 }
 async function enablePushNotifications() {

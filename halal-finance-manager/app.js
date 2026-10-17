@@ -12,7 +12,76 @@ const CANDLE_REFRESH_MS = 5 * 60 * 1000;
 const ESTIMATED_ROUND_TRIP_COST_PCT = 0.20;
 
 function read(key, fallback) { try { const v = JSON.parse(localStorage.getItem(key)); return v ?? fallback; } catch { return fallback; } }
-function save() { localStorage.setItem(STORE.coins, JSON.stringify(coins)); localStorage.setItem(STORE.alerts, JSON.stringify(alerts)); }
+function save() {
+  localStorage.setItem(STORE.coins, JSON.stringify(coins));
+  localStorage.setItem(STORE.alerts, JSON.stringify(alerts));
+  syncPushConfig();
+}
+function getClientId() {
+  let id = localStorage.getItem("hfm-push-client-id");
+  if (!id) {
+    id = (crypto.randomUUID ? crypto.randomUUID() : "hfm-" + Date.now().toString(36) + Math.random().toString(36).slice(2)) ;
+    localStorage.setItem("hfm-push-client-id", id);
+  }
+  return id;
+}
+async function syncPushConfig() {
+  if (localStorage.getItem("hfm-push-enabled") !== "true" || !("serviceWorker" in navigator)) return;
+  try {
+    const registration = await navigator.serviceWorker.getRegistration("./");
+    const subscription = await registration?.pushManager?.getSubscription();
+    if (!subscription) {
+      localStorage.setItem("hfm-push-enabled", "false");
+      return;
+    }
+    const response = await fetch("./api/push/subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientId: getClientId(), subscription: subscription.toJSON(), coins, alerts })
+    });
+    if (!response.ok) {
+      localStorage.setItem("hfm-push-enabled", "false");
+      console.warn("Push settings could not sync:", await response.text());
+    }
+  } catch (error) {
+    console.warn("Push settings sync failed:", error?.message);
+  }
+}
+async function enablePushNotifications() {
+  if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window) || !window.isSecureContext) {
+    return toast("Background push requires an HTTPS site and a browser that supports Web Push.");
+  }
+  const permission = await Notification.requestPermission();
+  if (permission !== "granted") return toast("Notification permission was not granted.");
+  try {
+    const keyResponse = await fetch("./api/push/public-key", { cache: "no-store" });
+    if (!keyResponse.ok) throw new Error("Push backend is not configured yet. Deploy the backend and set its environment variables first.");
+    const { publicKey } = await keyResponse.json();
+    const registration = await navigator.serviceWorker.register("./service-worker.js");
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey)
+    });
+    localStorage.setItem("hfm-push-enabled", "true");
+    const response = await fetch("./api/push/subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientId: getClientId(), subscription: subscription.toJSON(), coins, alerts })
+    });
+    if (!response.ok) throw new Error((await response.json()).error || "Could not save push subscription.");
+    document.querySelector("#notify-btn").textContent = "Push alerts enabled";
+    toast("Background push enabled. The backend scheduler must be running to check prices while this page is closed.");
+  } catch (error) {
+    localStorage.setItem("hfm-push-enabled", "false");
+    toast(error?.message || "Push setup failed. Check backend configuration.");
+  }
+}
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(base64);
+  return Uint8Array.from([...raw].map(ch => ch.charCodeAt(0)));
+}
 function fmt(n) { if (!Number.isFinite(n)) return "—"; return n >= 100 ? n.toLocaleString(undefined,{maximumFractionDigits:2}) : n >= 1 ? n.toLocaleString(undefined,{maximumFractionDigits:4}) : n.toLocaleString(undefined,{maximumFractionDigits:8}); }
 function pct(n) { return (n >= 0 ? "+" : "") + n.toFixed(2) + "%"; }
 function toast(message) { const el = document.querySelector("#toast"); el.textContent = message; el.classList.add("show"); clearTimeout(toast.timer); toast.timer = setTimeout(() => el.classList.remove("show"), 3500); }
@@ -174,6 +243,8 @@ function alertDescription(a) {
   return "rises "+a.value+"% from setup price";
 }
 function checkAlerts() {
+  // When background push is active, the server is the source of alert triggers.
+  if (localStorage.getItem("hfm-push-enabled") === "true") return;
   for (const a of alerts) {
     if (!a.active) continue;
     const p = prices[a.symbol]?.last;
@@ -223,9 +294,9 @@ document.addEventListener("click",e=>{
   if(removeAlert){alerts=alerts.filter(a=>a.id!==removeAlert.dataset.alertRemove);save();render();}
 });
 document.querySelector("#scan-btn").addEventListener("click",refresh);
-document.querySelector("#notify-btn").addEventListener("click",async()=>{
-  if(!("Notification" in window)) return toast("This browser does not support web notifications.");
-  const permission=await Notification.requestPermission();
-  toast(permission==="granted"?"Notifications enabled for this browser.":"Notification permission was not granted.");
-});
+document.querySelector("#notify-btn").addEventListener("click", enablePushNotifications);
+if (localStorage.getItem("hfm-push-enabled") === "true") {
+  document.querySelector("#notify-btn").textContent = "Push alerts enabled";
+  syncPushConfig();
+}
 render(); refresh(); setInterval(refresh,30000);

@@ -42,6 +42,19 @@ async function syncPushConfig() {
     if (!response.ok) {
       localStorage.setItem("hfm-push-enabled", "false");
       console.warn("Push settings could not sync:", await response.text());
+      return;
+    }
+    const result = await response.json();
+    if (Array.isArray(result.alerts)) {
+      const serverState = new Map(result.alerts.map(a => [a.id, a]));
+      alerts = alerts.map(a => {
+        const state = serverState.get(a.id);
+        return state && state.active === false
+          ? { ...a, active: false, triggeredAt: state.triggeredAt || a.triggeredAt, triggeredPrice: state.triggeredPrice || a.triggeredPrice }
+          : a;
+      });
+      localStorage.setItem(STORE.alerts, JSON.stringify(alerts));
+      render();
     }
   } catch (error) {
     console.warn("Push settings sync failed:", error?.message);

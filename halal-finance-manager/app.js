@@ -41,7 +41,10 @@ async function syncPushConfig() {
     });
     if (!response.ok) {
       localStorage.setItem("hfm-push-enabled", "false");
+      const button = document.querySelector("#notify-btn");
+      if (button) button.textContent = "Enable background push";
       console.warn("Push settings could not sync:", await response.text());
+      toast("Background push sync failed. Browser-session alerts are active while this page stays open.");
       return;
     }
     const result = await response.json();
@@ -89,6 +92,8 @@ async function enablePushNotifications() {
     toast("Background push enabled. The backend scheduler must be running to check prices while this page is closed.");
   } catch (error) {
     localStorage.setItem("hfm-push-enabled", "false");
+    const button = document.querySelector("#notify-btn");
+    if (button) button.textContent = "Enable background push";
     toast(error?.message || "Push setup failed. Check backend configuration.");
   }
 }

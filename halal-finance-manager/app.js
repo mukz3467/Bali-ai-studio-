@@ -301,7 +301,7 @@ document.querySelector("#alert-form").addEventListener("submit",e=>{
   const base=prices[symbol]?.last;
   if(!Number.isFinite(base)) return toast("Wait for live price data before creating this alert.");
   alerts.unshift({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),symbol,type,value,base,active:true,createdAt:Date.now()});
-  save(); render(); document.querySelector("#alert-value").value=""; toast("Alert saved. Keep this page open for browser-session monitoring.");
+  save(); render(); document.querySelector("#alert-value").value=""; toast(localStorage.getItem("hfm-push-enabled") === "true" ? "Alert saved for background push monitoring." : "Alert saved. Keep this page open for browser-session monitoring.");
 });
 document.addEventListener("click",e=>{
   const remove=e.target.closest("[data-remove]");
@@ -310,6 +310,19 @@ document.addEventListener("click",e=>{
   if(removeAlert){alerts=alerts.filter(a=>a.id!==removeAlert.dataset.alertRemove);save();render();}
 });
 document.querySelector("#scan-btn").addEventListener("click",refresh);
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.addEventListener("message", event => {
+    if (event.data?.type !== "HFM_PUSH_ALERT") return;
+    const id = String(event.data.tag || "").replace(/^hfm-/, "");
+    const alert = alerts.find(a => a.id === id);
+    if (alert) {
+      alert.active = false;
+      alert.triggeredAt = Date.now();
+      localStorage.setItem(STORE.alerts, JSON.stringify(alerts));
+      render();
+    }
+  });
+}
 document.querySelector("#notify-btn").addEventListener("click", enablePushNotifications);
 if (localStorage.getItem("hfm-push-enabled") === "true") {
   document.querySelector("#notify-btn").textContent = "Push alerts enabled";

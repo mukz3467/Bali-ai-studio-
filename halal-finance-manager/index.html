@@ -4,16 +4,50 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#08111f" />
-  <meta name="description" content="Halal-only crypto market watchlist, statistical analysis, and manual trading alerts." />
-  <title>Halal Finance Manager Pro</title>
+  <meta name="color-scheme" content="dark" />
+  <meta name="description" content="Monitor Shariah-reviewed crypto assets with Binance Spot market data, transparent statistical analysis, manual price alerts, and walk-forward backtesting." />
+  <meta name="robots" content="index,follow,max-image-preview:large" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Halal Finance Manager Pro" />
+  <meta property="og:title" content="Halal Crypto Market Monitor | Halal Finance Manager Pro" />
+  <meta property="og:description" content="Track independently Shariah-reviewed assets, inspect transparent Spot-market statistics, backtest signals, and set manual trading alerts." />
+  <meta property="og:image" content="https://raw.githubusercontent.com/mukz3467/Bali-ai-studio-/main/halal-finance-manager/social-preview.svg" />
+  <meta property="og:image:type" content="image/svg+xml" />
+  <meta property="og:image:alt" content="Halal Finance Manager Pro — Shariah-reviewed crypto watchlist, market statistics, and manual alerts." />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Halal Crypto Market Monitor | Halal Finance Manager Pro" />
+  <meta name="twitter:description" content="Binance Spot market data, transparent statistical analysis, walk-forward tests, and manual alerts for assets you have independently reviewed." />
+  <meta name="twitter:image" content="https://raw.githubusercontent.com/mukz3467/Bali-ai-studio-/main/halal-finance-manager/social-preview.svg" />
+  <meta name="twitter:image:alt" content="Halal Finance Manager Pro dashboard preview." />
+  <title>Halal Crypto Market Monitor | Halal Finance Manager Pro</title>
   <link rel="manifest" href="./manifest.json" />
   <link rel="icon" href="./icon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="./styles.css" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Halal Finance Manager Pro",
+    "applicationCategory": "FinanceApplication",
+    "operatingSystem": "Any",
+    "browserRequirements": "JavaScript enabled; HTTPS required for background push notifications",
+    "description": "A mobile-friendly Binance Spot market monitor for assets users have independently screened under their chosen Shariah standard. Includes market statistics, walk-forward evaluation, and manual price alerts. It does not place trades or certify Shariah compliance.",
+    "featureList": [
+      "Public Binance Spot market data",
+      "User-managed Shariah-reviewed watchlist",
+      "Transparent volatility estimates",
+      "Walk-forward directional evaluation",
+      "Manual price and percentage alerts",
+      "Optional browser push notifications"
+    ]
+  }
+  </script>
 </head>
 <body>
   <div class="app-shell">
-    <aside class="sidebar">
-      <a class="brand" href="#"><span class="brand-mark">H</span><span><b>Halal Finance</b><small>MANAGER PRO</small></span></a>
+    <aside class="sidebar" aria-label="Main navigation">
+      <a class="brand" href="#overview" aria-label="Halal Finance Manager Pro home"><span class="brand-mark">H</span><span><b>Halal Finance</b><small>MANAGER PRO</small></span></a>
       <div class="nav-label">WORKSPACE</div>
       <a class="nav-item active" href="#overview">▦ <span>Overview</span></a>
       <a class="nav-item" href="#watchlist">◎ <span>Halal Watchlist</span></a>
@@ -23,9 +57,9 @@
       <div class="sidebar-foot">Manual trading only<br><span>No orders are placed.</span></div>
     </aside>
 
-    <main class="main-content">
+    <main class="main-content" id="overview">
       <header class="topbar">
-        <div><p class="eyebrow">QUANTITATIVE MARKET MONITOR</p><h1>Market overview</h1><p class="subhead">Spot analysis, probability-aware signals and manual alerts.</p></div>
+        <div><p class="eyebrow">QUANTITATIVE MARKET MONITOR</p><h1>Halal Crypto Market Monitor</h1><p class="subhead">Binance Spot statistics, walk-forward testing, and manual price alerts for assets you have independently Shariah-reviewed.</p></div>
         <div class="top-actions"><span class="market-pill"><span class="live-dot"></span> BINANCE SPOT</span><button id="notify-btn" class="button button-secondary">Enable background push</button></div>
       </header>
 
@@ -69,7 +103,27 @@
           <div class="risk-note">Crypto is volatile. A price drop is not automatically a buying opportunity. Fees, slippage and further downside can turn a trade into a loss.</div>
         </section>
       </div>
-      <footer>HALAL FINANCE MANAGER PRO <span>Data: Binance public market endpoints · Alerts are informational only</span></footer>
+      <section class="panel seo-guide" id="how-it-works" aria-labelledby="guide-heading">
+        <div class="section-head"><div><p class="eyebrow">GUIDE & TRANSPARENCY</p><h2 id="guide-heading">How to use this halal crypto market monitor</h2></div></div>
+        <p>Halal Finance Manager Pro is a market-monitoring tool for people who want to review crypto markets while keeping their own Shariah screening process separate from price analysis. The watchlist starts empty: add an asset only after checking it against a credible methodology you trust. The app records your decision but does not issue a fatwa or independently certify any token.</p>
+        <h3>Market data, estimates, and backtesting</h3>
+        <p>The dashboard reads public Binance Spot market data. Volatility ranges and directional signals are statistical estimates, not guaranteed forecasts. The Quant Lab uses a transparent momentum heuristic and a walk-forward comparison; historical performance does not prove future profitability. Consider actual trading fees, spread, slippage, liquidity, and downside risk before making any manual decision.</p>
+        <h3>Frequently asked questions</h3>
+        <details class="seo-faq"><summary>Does this app automatically decide which coins are halal?</summary><p>No. It does not certify assets or provide a fatwa. You must independently review each asset under your chosen Shariah standard and leave uncertain assets off the watchlist.</p></details>
+        <details class="seo-faq"><summary>Does the app place Binance trades automatically?</summary><p>No. It uses public market data and provides informational alerts only. It does not place orders and does not need Binance trading or withdrawal API keys.</p></details>
+        <details class="seo-faq"><summary>Are price estimates or backtest results guaranteed to be accurate?</summary><p>No. Estimates use a transparent heuristic, and historical tests are limited samples. Results can change by market regime and do not guarantee a correct signal or profit.</p></details>
+        <h3>Useful references</h3>
+        <ul class="reference-links">
+          <li><a href="https://developers.binance.com/docs/binance-spot-api-docs" target="_blank" rel="noopener noreferrer">Official Binance Spot API documentation</a> — understand the public market-data source.</li>
+          <li><a href="https://aaoifi.com/" target="_blank" rel="noopener noreferrer">AAOIFI</a> — a reference point for Islamic finance standards; this app itself does not determine compliance.</li>
+        </ul>
+        <p class="helper-text">Privacy note: watchlist and alert settings are stored in this browser. If you enable background push, the alert settings and push subscription are also sent to the app's configured backend to deliver notifications.</p>
+      </section>
+      <footer>
+        <strong>HALAL FINANCE MANAGER PRO</strong>
+        <span><a href="#overview">Overview</a> · <a href="#watchlist">Watchlist</a> · <a href="#quant-lab">Quant Lab</a> · <a href="#alerts">Alerts</a> · <a href="#how-it-works">How it works</a></span>
+        <span>Public Binance market data · Informational alerts only · No automatic orders</span>
+      </footer>
     </main>
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>

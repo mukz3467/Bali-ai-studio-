@@ -70,22 +70,44 @@ function buildForecast(closes) {
   return { direction, expectedPct, score, momentum6: (Math.exp(momentum6*6)-1)*100, momentum24: (Math.exp(momentum24*24)-1)*100, sigmaPct: sigma*100 };
 }
 function runWalkForwardBacktest(closes) {
-  // One-step directional baseline: at each point, use only the previous 6 hourly returns.
-  // No future candles enter a forecast. Excludes flat/near-flat forecasts from hit-rate denominator.
-  if (closes.length < 40) return null;
-  let correct=0, total=0, signalReturn=0, signals=0;
-  for (let i=25;i<closes.length-1;i++) {
-    const history=[];
-    for(let j=Math.max(1,i-5);j<=i;j++) if(closes[j-1]>0) history.push(Math.log(closes[j]/closes[j-1]));
-    const forecast=mean(history);
-    const actual=closes[i+1]>0?Math.log(closes[i+1]/closes[i]):0;
-    if (Math.abs(forecast)<0.00005) continue;
-    total++;
-    if ((forecast>0 && actual>0)||(forecast<0 && actual<0)) correct++;
-    signalReturn += Math.sign(forecast)*actual;
-    signals++;
+  // Strict one-step walk-forward test: each forecast sees closes[0..i] only;
+  // close[i+1] is used only as the held-out outcome. No random split or future leakage.
+  if (closes.length < 60) return null;
+  let signalCorrect=0, signalCount=0, benchmarkCorrect=0, evaluated=0;
+  let absError=0, signedSignalReturn=0;
+  for (let i=48;i<closes.length-1;i++) {
+    if (!(closes[i] > 0 && closes[i+1] > 0)) continue;
+    const history = closes.slice(0, i+1);
+    const f = buildForecast(history);
+    if (!f) continue;
+    const actualLog = Math.log(closes[i+1]/closes[i]);
+    const actualPct = (Math.exp(actualLog)-1)*100;
+    absError += Math.abs(f.expectedPct-actualPct);
+    evaluated++;
+    if (Math.abs(f.score) > 0.12) {
+      signalCount++;
+      if ((f.score > 0 && actualLog > 0) || (f.score < 0 && actualLog < 0)) signalCorrect++;
+      signedSignalReturn += Math.sign(f.score)*actualLog;
+    }
+    // Simple trailing-majority baseline, calculated only from prior returns.
+    const prior = [];
+    for (let j=Math.max(1,i-24);j<=i;j++) {
+      if (closes[j-1] > 0 && closes[j] > 0) prior.push(Math.log(closes[j]/closes[j-1]));
+    }
+    const upCount = prior.filter(r=>r>0).length;
+    const downCount = prior.filter(r=>r<0).length;
+    const baseUp = upCount >= downCount;
+    if ((baseUp && actualLog > 0) || (!baseUp && actualLog < 0)) benchmarkCorrect++;
   }
-  return { samples: total, accuracy: total ? correct/total*100 : null, avgSignalReturn: signals ? (Math.exp(signalReturn/signals)-1)*100 : null };
+  return {
+    evaluated,
+    signalCount,
+    coverage: evaluated ? signalCount/evaluated*100 : null,
+    accuracy: signalCount ? signalCorrect/signalCount*100 : null,
+    benchmarkAccuracy: evaluated ? benchmarkCorrect/evaluated*100 : null,
+    maePct: evaluated ? absError/evaluated : null,
+    avgDirectionalReturnPct: signalCount ? (Math.exp(signedSignalReturn/signalCount)-1)*100 : null
+  };
 }
 function renderQuantLab() {
   const el = document.querySelector("#quant-rows");
@@ -98,7 +120,7 @@ function renderQuantLab() {
   el.innerHTML = available.map(c=>{
     const p=prices[c.symbol], f=p.forecast, b=p.backtest;
     const cls=f.score>0.12?"positive":f.score< -0.12?"negative":"";
-    return '<article class="quant-card"><div class="quant-card-head"><b>'+escapeHTML(c.symbol)+'</b><span class="tag">'+escapeHTML(f.direction)+'</span></div><div class="quant-big '+cls+'">'+(f.expectedPct>=0?"+":"")+f.expectedPct.toFixed(3)+'%</div><div class="quant-caption">Heuristic next-hour drift estimate · not a target</div><div class="quant-metrics"><span>6h momentum <b>'+f.momentum6.toFixed(2)+'%</b></span><span>24h momentum <b>'+f.momentum24.toFixed(2)+'%</b></span><span>Backtest directional hit rate <b>'+(b&&b.accuracy!==null?b.accuracy.toFixed(1)+'%':'Not enough data')+'</b></span><span>Test samples <b>'+(b?b.samples:'—')+'</b></span></div></article>';
+    return '<article class="quant-card"><div class="quant-card-head"><b>'+escapeHTML(c.symbol)+'</b><span class="tag">'+escapeHTML(f.direction)+'</span></div><div class="quant-big '+cls+'">'+(f.expectedPct>=0?"+":"")+f.expectedPct.toFixed(3)+'%</div><div class="quant-caption">Heuristic next-hour drift estimate · not a target</div><div class="quant-metrics"><span>6h momentum <b>'+f.momentum6.toFixed(2)+'%</b></span><span>24h momentum <b>'+f.momentum24.toFixed(2)+'%</b></span><span>Backtest directional hit rate <b>'+(b&&b.accuracy!==null?b.accuracy.toFixed(1)+'%':'Not enough signals')+'</b></span><span>Signals / tested hours <b>'+(b?b.signalCount+' / '+b.evaluated:'—')+'</b></span><span>Trailing-majority baseline <b>'+(b&&b.benchmarkAccuracy!==null?b.benchmarkAccuracy.toFixed(1)+'%':'—')+'</b></span><span>Forecast MAE <b>'+(b&&b.maePct!==null?b.maePct.toFixed(3)+'%':'—')+'</b></span><span>Signal coverage <b>'+(b&&b.coverage!==null?b.coverage.toFixed(1)+'%':'—')+'</b></span></div></article>';
   }).join("");
 }
 

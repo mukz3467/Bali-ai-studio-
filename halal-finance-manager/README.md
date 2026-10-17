@@ -37,3 +37,11 @@ Open the `halal-finance-manager` directory's served URL. Browser CORS policies, 
 
 ## Risk note
 Crypto markets are volatile. Historical behaviour does not guarantee future results. Account for fees, spread, slippage, liquidity, and downside risk before acting on any signal.
+
+
+## Quant lab update
+- Fetches up to 200 hourly candles per user-approved asset.
+- Adds a transparent momentum-based next-hour drift heuristic using recent 6-hour and 24-hour returns plus a trend-difference term.
+- Adds a walk-forward directional baseline backtest: each forecast uses only candles available before the next candle being evaluated.
+- Shows historical directional hit rate and sample count. This is not a calibrated probability, not an AI/ML model, and not evidence of profitability. Fees, spread, slippage, and market-regime changes are not included.
+- Forecast estimates are capped to reduce extreme display values; that cap is a UI safeguard, not a confidence interval.

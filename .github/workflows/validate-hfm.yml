@@ -27,6 +27,17 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Install production dependencies without lifecycle scripts
+        working-directory: halal-finance-manager
+        run: |
+          set -euo pipefail
+          npm install --package-lock-only --ignore-scripts --no-audit
+          npm ci --ignore-scripts
+
+      - name: Audit dependencies for high-severity advisories
+        working-directory: halal-finance-manager
+        run: npm audit --omit=dev --audit-level=high
+
       - name: Validate JavaScript syntax
         working-directory: halal-finance-manager
         run: |

@@ -3,10 +3,10 @@ self.addEventListener("push", event => {
   try { if (event.data) data = { ...data, ...event.data.json() }; } catch {}
   event.waitUntil(self.registration.showNotification(data.title, {
     body: data.body,
-    icon: "./icon.svg",
-    badge: "./icon.svg",
+    icon: new URL("icon.svg", self.registration.scope).href,
+    badge: new URL("icon.svg", self.registration.scope).href,
     tag: data.tag || "hfm-market-alert",
-    data: { url: self.location.origin + self.registration.scope }
+    data: { url: self.registration.scope }
   }));
 });
 

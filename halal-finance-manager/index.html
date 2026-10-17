@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#08111f" />
+  <meta name="description" content="Halal-only crypto market watchlist, statistical analysis, and manual trading alerts." />
+  <title>Halal Finance Manager Pro</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#"><span class="brand-mark">H</span><span><b>Halal Finance</b><small>MANAGER PRO</small></span></a>
+      <div class="nav-label">WORKSPACE</div>
+      <a class="nav-item active" href="#overview">▦ <span>Overview</span></a>
+      <a class="nav-item" href="#watchlist">◎ <span>Halal Watchlist</span></a>
+      <a class="nav-item" href="#alerts">♢ <span>Alerts</span><span id="alert-count" class="nav-count">0</span></a>
+      <div class="sidebar-note"><span class="live-dot"></span><span>Public market data<br><b id="connection-label">Connecting…</b></span></div>
+      <div class="sidebar-foot">Manual trading only<br><span>No orders are placed.</span></div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div><p class="eyebrow">QUANTITATIVE MARKET MONITOR</p><h1>Market overview</h1><p class="subhead">Spot analysis, probability-aware signals and manual alerts.</p></div>
+        <div class="top-actions"><span class="market-pill"><span class="live-dot"></span> BINANCE SPOT</span><button id="notify-btn" class="button button-secondary">Enable notifications</button></div>
+      </header>
+
+      <section class="notice"><span class="notice-icon">✦</span><div><b>Halal-only by design</b><p>Only coins you add after independent Shariah review enter the scanner. Unverified assets are excluded by default.</p></div></section>
+
+      <section class="stats-grid">
+        <article class="stat-card"><div class="stat-label">Approved watchlist</div><div class="stat-value" id="watch-count">0</div><div class="stat-foot">User-reviewed assets only</div></article>
+        <article class="stat-card"><div class="stat-label">Markets online</div><div class="stat-value" id="online-count">0</div><div class="stat-foot">Live ticker availability</div></article>
+        <article class="stat-card"><div class="stat-label">Active alerts</div><div class="stat-value" id="active-count">0</div><div class="stat-foot">Price and range triggers</div></article>
+        <article class="stat-card"><div class="stat-label">Data updated</div><div class="stat-value stat-time" id="updated-at">—</div><div class="stat-foot">Browser session status</div></article>
+      </section>
+
+      <section class="panel" id="watchlist">
+        <div class="section-head"><div><p class="eyebrow">YOUR APPROVED ASSETS</p><h2>Halal watchlist</h2><p class="section-description">Add a Binance Spot symbol only after your Shariah screening is complete.</p></div><button id="scan-btn" class="button button-secondary">↻ Refresh markets</button></div>
+        <form id="add-form" class="add-form">
+          <label>Spot symbol <input id="symbol-input" placeholder="e.g. BTCUSDT" maxlength="20" autocomplete="off" required /></label>
+          <label class="checkbox-label"><input id="halal-confirm" type="checkbox" required /> I have independently verified this asset under my chosen Shariah standard.</label>
+          <button class="button button-primary" type="submit">＋ Add approved coin</button>
+        </form>
+        <p class="helper-text">This checkbox records your review; it does not certify a coin as halal. The app does not provide a fatwa or independently verify Shariah status.</p>
+        <div class="table-wrap"><table><thead><tr><th>ASSET</th><th>LAST PRICE</th><th>24H CHANGE</th><th>VOLATILITY</th><th>1H EST. RANGE*</th><th>STATUS</th><th></th></tr></thead><tbody id="coin-rows"><tr><td colspan="7" class="empty">No approved coins added. Complete your Shariah review, then add a symbol above.</td></tr></tbody></table></div>
+        <p class="helper-text">*The range is a simple volatility-based statistical estimate, not a validated AI forecast or a promise of future price.</p>
+      </section>
+
+      <div class="lower-grid">
+        <section class="panel" id="alerts"><div class="section-head"><div><p class="eyebrow">SIGNAL CENTER</p><h2>Alert rules</h2></div></div>
+          <form id="alert-form" class="alert-form">
+            <label>Coin <select id="alert-symbol" required><option value="">Add an approved coin first</option></select></label>
+            <label>Alert type <select id="alert-type"><option value="below">Price falls to/below</option><option value="above">Price rises to/above</option><option value="move-down">Falls % from current price</option><option value="move-up">Rises % from current price</option></select></label>
+            <label>Price / percent <input id="alert-value" type="number" min="0.01" step="any" placeholder="e.g. 3.5" required /></label>
+            <button class="button button-primary" type="submit">Create alert</button>
+          </form>
+          <div id="alert-list" class="alert-list"><p class="empty">No alerts configured.</p></div>
+        </section>
+        <section class="panel"><div class="section-head"><div><p class="eyebrow">MODEL TRANSPARENCY</p><h2>How estimates work</h2></div></div>
+          <div class="method-item"><span class="method-number">01</span><div><b>Live Spot ticker</b><p>Uses Binance public 24-hour ticker and klines when reachable.</p></div></div>
+          <div class="method-item"><span class="method-number">02</span><div><b>Volatility estimate</b><p>Computes recent log-return volatility from 1-hour candles to create an indicative range.</p></div></div>
+          <div class="method-item"><span class="method-number">03</span><div><b>No false confidence</b><p>No machine-learning model or predictive accuracy is claimed in this starter build. Validate forecasts with out-of-sample backtests before relying on them.</p></div></div>
+          <div class="risk-note">Crypto is volatile. A price drop is not automatically a buying opportunity. Fees, slippage and further downside can turn a trade into a loss.</div>
+        </section>
+      </div>
+      <footer>HALAL FINANCE MANAGER PRO <span>Data: Binance public market endpoints · Alerts are informational only</span></footer>
+    </main>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="./app.js"></script>
+</body>
+</html>

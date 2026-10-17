@@ -32,16 +32,31 @@ export default async function handler(req, res) {
 
   try {
     const redis = Redis.fromEnv();
+    const priorRaw = await redis.get(`hfm:user:${clientId}`);
+    const prior = priorRaw ? (typeof priorRaw === "string" ? JSON.parse(priorRaw) : priorRaw) : null;
+    const priorAlerts = new Map((prior?.alerts || []).map(a => [a.id, a]));
+    const mergedAlerts = alerts.map(a => {
+      const previous = priorAlerts.get(a.id);
+      // Keep server-triggered alerts inactive when a browser reconnects with stale localStorage.
+      if (previous && previous.active === false && a.active === true && previous.triggeredAt) {
+        return { ...a, active: false, triggeredAt: previous.triggeredAt, triggeredPrice: previous.triggeredPrice };
+      }
+      return { ...a, active: a.active };
+    });
     const record = {
       clientId,
       subscription,
       coins: coins.map(c => ({ symbol: c.symbol, reviewConfirmed: true })),
-      alerts: alerts.map(a => ({ id: a.id, symbol: a.symbol, type: a.type, value: Number(a.value), base: Number(a.base), active: a.active })),
+      alerts: mergedAlerts,
       updatedAt: new Date().toISOString()
     };
     await redis.set(`hfm:user:${clientId}`, JSON.stringify(record));
     await redis.sadd("hfm:clients", clientId);
-    return res.status(200).json({ ok: true, message: "Push subscription and active alerts synced." });
+    return res.status(200).json({
+      ok: true,
+      message: "Push subscription and active alerts synced.",
+      alerts: record.alerts.map(a => ({ id: a.id, active: a.active, triggeredAt: a.triggeredAt || null, triggeredPrice: a.triggeredPrice || null }))
+    });
   } catch (error) {
     console.error("push subscription storage failed", error?.message);
     return res.status(500).json({ error: "Could not save push settings." });

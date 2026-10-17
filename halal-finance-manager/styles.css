@@ -10,3 +10,23 @@
 .quant-metrics{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border,rgba(148,163,184,.15))}
 .quant-metrics span{display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--muted,#94a3b8)}
 .quant-metrics b{font-size:13px;color:var(--text,#e2e8f0)}
+
+
+/* SEO guide, accessible navigation, and mobile overflow safeguards */
+.main-content{overflow-wrap:anywhere}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+.seo-guide{line-height:1.75}
+.seo-guide>p{max-width:82ch;color:#b6c6d9;font-size:13px}
+.seo-guide h3{font-size:15px;margin:22px 0 7px;letter-spacing:-.2px}
+.seo-guide a{color:var(--cyan);text-underline-offset:3px}
+.seo-guide a:hover{color:#b2fff4}
+.seo-faq{border-top:1px solid var(--border);padding:13px 0}
+.seo-faq:last-of-type{border-bottom:1px solid var(--border)}
+.seo-faq summary{cursor:pointer;color:var(--text);font-size:13px;font-weight:700}
+.seo-faq p{color:#a9b9cc;font-size:12px;margin:9px 0 0;max-width:82ch}
+.reference-links{padding-left:20px;color:#a9b9cc;font-size:12px}
+.reference-links li{margin:8px 0}
+footer{flex-wrap:wrap}
+footer a{color:#9fb4c9;text-decoration:underline;text-underline-offset:3px}
+footer a:hover{color:var(--cyan)}
+@media(max-width:480px){.topbar{gap:10px}.topbar h1{font-size:24px;line-height:1.15}.top-actions .market-pill{padding:7px 8px}.seo-guide{padding:14px}.seo-guide h2{font-size:17px}.seo-guide>p{font-size:12px}.nav-item{padding:8px}.main-content{padding-left:10px;padding-right:10px}}

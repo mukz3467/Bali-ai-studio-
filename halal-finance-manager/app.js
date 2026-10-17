@@ -8,6 +8,8 @@ let busy = false;
 const candleCache = {};
 const candleFetchedAt = {};
 const CANDLE_REFRESH_MS = 5 * 60 * 1000;
+// Illustrative round-trip cost assumption; replace with actual fees, spread and slippage.
+const ESTIMATED_ROUND_TRIP_COST_PCT = 0.20;
 
 function read(key, fallback) { try { const v = JSON.parse(localStorage.getItem(key)); return v ?? fallback; } catch { return fallback; } }
 function save() { localStorage.setItem(STORE.coins, JSON.stringify(coins)); localStorage.setItem(STORE.alerts, JSON.stringify(alerts)); }
@@ -35,7 +37,7 @@ async function refresh() {
         // Refresh hourly candles every 5 minutes to reduce API load.
         // Exclude the still-forming candle because its close is not final.
         if (!candleCache[symbol] || Date.now() - (candleFetchedAt[symbol] || 0) >= CANDLE_REFRESH_MS) {
-          const rawKlines = await getJSON("/api/v3/klines?symbol=" + encodeURIComponent(symbol) + "&interval=1h&limit=200");
+          const rawKlines = await getJSON("/api/v3/klines?symbol=" + encodeURIComponent(symbol) + "&interval=1h&limit=1000");
           candleCache[symbol] = rawKlines.filter(k => Number(k[6]) < Date.now());
           candleFetchedAt[symbol] = Date.now();
         }
@@ -85,6 +87,7 @@ function runWalkForwardBacktest(closes) {
   if (closes.length < 60) return null;
   let signalCorrect=0, signalCount=0, benchmarkCorrect=0, evaluated=0;
   let absError=0, signedSignalReturn=0;
+  let bullishSignals=0, bullishWinsAfterCosts=0, netLongReturnSum=0;
   for (let i=48;i<closes.length-1;i++) {
     if (!(closes[i] > 0 && closes[i+1] > 0)) continue;
     const history = closes.slice(0, i+1);
@@ -98,6 +101,13 @@ function runWalkForwardBacktest(closes) {
       signalCount++;
       if ((f.score > 0 && actualLog > 0) || (f.score < 0 && actualLog < 0)) signalCorrect++;
       signedSignalReturn += Math.sign(f.score)*actualLog;
+    }
+    // Spot-only simulation: bullish signals go long; bearish signals stay in cash.
+    if (f.score > 0.12) {
+      bullishSignals++;
+      const netPct = (Math.exp(actualLog)-1)*100 - ESTIMATED_ROUND_TRIP_COST_PCT;
+      netLongReturnSum += netPct;
+      if (netPct > 0) bullishWinsAfterCosts++;
     }
     // Simple trailing-majority baseline, calculated only from prior returns.
     const prior = [];
@@ -116,7 +126,11 @@ function runWalkForwardBacktest(closes) {
     accuracy: signalCount ? signalCorrect/signalCount*100 : null,
     benchmarkAccuracy: evaluated ? benchmarkCorrect/evaluated*100 : null,
     maePct: evaluated ? absError/evaluated : null,
-    avgDirectionalReturnPct: signalCount ? (Math.exp(signedSignalReturn/signalCount)-1)*100 : null
+    avgDirectionalReturnPct: signalCount ? (Math.exp(signedSignalReturn/signalCount)-1)*100 : null,
+    assumedRoundTripCostPct: ESTIMATED_ROUND_TRIP_COST_PCT,
+    bullishSignalCount: bullishSignals,
+    bullishWinRateAfterCosts: bullishSignals ? bullishWinsAfterCosts/bullishSignals*100 : null,
+    averageNetReturnPerBullishSignalPct: bullishSignals ? netLongReturnSum/bullishSignals : null
   };
 }
 function renderQuantLab() {
@@ -130,7 +144,7 @@ function renderQuantLab() {
   el.innerHTML = available.map(c=>{
     const p=prices[c.symbol], f=p.forecast, b=p.backtest;
     const cls=f.score>0.12?"positive":f.score< -0.12?"negative":"";
-    return '<article class="quant-card"><div class="quant-card-head"><b>'+escapeHTML(c.symbol)+'</b><span class="tag">'+escapeHTML(f.direction)+'</span></div><div class="quant-big '+cls+'">'+(f.expectedPct>=0?"+":"")+f.expectedPct.toFixed(3)+'%</div><div class="quant-caption">Heuristic next-hour drift estimate · not a target</div><div class="quant-metrics"><span>6h momentum <b>'+f.momentum6.toFixed(2)+'%</b></span><span>24h momentum <b>'+f.momentum24.toFixed(2)+'%</b></span><span>Backtest directional hit rate <b>'+(b&&b.accuracy!==null?b.accuracy.toFixed(1)+'%':'Not enough signals')+'</b></span><span>Signals / tested hours <b>'+(b?b.signalCount+' / '+b.evaluated:'—')+'</b></span><span>Trailing-majority baseline <b>'+(b&&b.benchmarkAccuracy!==null?b.benchmarkAccuracy.toFixed(1)+'%':'—')+'</b></span><span>Forecast MAE <b>'+(b&&b.maePct!==null?b.maePct.toFixed(3)+'%':'—')+'</b></span><span>Signal coverage <b>'+(b&&b.coverage!==null?b.coverage.toFixed(1)+'%':'—')+'</b></span></div></article>';
+    return '<article class="quant-card"><div class="quant-card-head"><b>'+escapeHTML(c.symbol)+'</b><span class="tag">'+escapeHTML(f.direction)+'</span></div><div class="quant-big '+cls+'">'+(f.expectedPct>=0?"+":"")+f.expectedPct.toFixed(3)+'%</div><div class="quant-caption">Heuristic next-hour drift estimate · not a target</div><div class="quant-metrics"><span>6h momentum <b>'+f.momentum6.toFixed(2)+'%</b></span><span>24h momentum <b>'+f.momentum24.toFixed(2)+'%</b></span><span>Backtest directional hit rate <b>'+(b&&b.accuracy!==null?b.accuracy.toFixed(1)+'%':'Not enough signals')+'</b></span><span>Signals / tested hours <b>'+(b?b.signalCount+' / '+b.evaluated:'—')+'</b></span><span>Trailing-majority baseline <b>'+(b&&b.benchmarkAccuracy!==null?b.benchmarkAccuracy.toFixed(1)+'%':'—')+'</b></span><span>Forecast MAE <b>'+(b&&b.maePct!==null?b.maePct.toFixed(3)+'%':'—')+'</b></span><span>Signal coverage <b>'+(b&&b.coverage!==null?b.coverage.toFixed(1)+'%':'—')+'</b></span><span>Spot bullish win rate after assumed costs <b>'+(b&&b.bullishWinRateAfterCosts!==null?b.bullishWinRateAfterCosts.toFixed(1)+'%':'—')+'</b></span><span>Avg net return / bullish signal <b>'+(b&&b.averageNetReturnPerBullishSignalPct!==null?b.averageNetReturnPerBullishSignalPct.toFixed(3)+'%':'—')+'</b></span><span>Assumed round-trip cost <b>'+(b?b.assumedRoundTripCostPct.toFixed(2)+'% — illustrative':'—')+'</b></span></div></article>';
   }).join("");
 }
 

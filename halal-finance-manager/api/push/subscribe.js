@@ -1,0 +1,49 @@
+import { Redis } from "@upstash/redis";
+
+function jsonBody(req) {
+  return typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {});
+}
+function sameOrigin(req) {
+  const origin = req.headers.origin;
+  if (!origin) return true;
+  try { return new URL(origin).host === req.headers.host; } catch { return false; }
+}
+function validSymbol(value) { return typeof value === "string" && /^[A-Z0-9]{3,20}USDT$/.test(value); }
+
+export default async function handler(req, res) {
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  if (!sameOrigin(req)) return res.status(403).json({ error: "Cross-origin request rejected." });
+  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+    return res.status(503).json({ error: "Push storage is not configured yet." });
+  }
+  let body;
+  try { body = jsonBody(req); } catch { return res.status(400).json({ error: "Invalid JSON." }); }
+  const { clientId, subscription, coins, alerts } = body;
+  if (typeof clientId !== "string" || !/^[a-zA-Z0-9-]{16,64}$/.test(clientId)) return res.status(400).json({ error: "Invalid client ID." });
+  if (!subscription || typeof subscription.endpoint !== "string" || !subscription.endpoint.startsWith("https://") || !subscription.keys?.p256dh || !subscription.keys?.auth) return res.status(400).json({ error: "Invalid push subscription." });
+  if (!Array.isArray(coins) || coins.length > 25 || !coins.every(c => validSymbol(c?.symbol) && c?.reviewConfirmed === true)) return res.status(400).json({ error: "Invalid reviewed-asset list." });
+  if (!Array.isArray(alerts) || alerts.length > 100 || !alerts.every(a =>
+    typeof a?.id === "string" && validSymbol(a?.symbol) &&
+    ["below", "above", "move-down", "move-up"].includes(a?.type) &&
+    Number.isFinite(Number(a?.value)) && Number(a.value) > 0 &&
+    Number.isFinite(Number(a?.base)) && Number(a.base) > 0 &&
+    typeof a?.active === "boolean" && coins.some(c => c.symbol === a.symbol)
+  )) return res.status(400).json({ error: "Invalid alert rules." });
+
+  try {
+    const redis = Redis.fromEnv();
+    const record = {
+      clientId,
+      subscription,
+      coins: coins.map(c => ({ symbol: c.symbol, reviewConfirmed: true })),
+      alerts: alerts.map(a => ({ id: a.id, symbol: a.symbol, type: a.type, value: Number(a.value), base: Number(a.base), active: a.active })),
+      updatedAt: new Date().toISOString()
+    };
+    await redis.set(`hfm:user:${clientId}`, JSON.stringify(record));
+    await redis.sadd("hfm:clients", clientId);
+    return res.status(200).json({ ok: true, message: "Push subscription and active alerts synced." });
+  } catch (error) {
+    console.error("push subscription storage failed", error?.message);
+    return res.status(500).json({ error: "Could not save push settings." });
+  }
+}

@@ -36,6 +36,7 @@ export default async function handler(req, res) {
       const rows = await response.json();
       const prices = Object.fromEntries(rows.map(row => [row.symbol, Number(row.price)]));
       let changed = false;
+      let subscriptionExpired = false;
       for (const alert of active) {
         checked++;
         const price = prices[alert.symbol];
@@ -52,6 +53,7 @@ export default async function handler(req, res) {
           if (error?.statusCode === 404 || error?.statusCode === 410) {
             await redis.del(`hfm:user:${id}`);
             await redis.srem("hfm:clients", id);
+            subscriptionExpired = true;
             break;
           }
           failed++;
@@ -63,7 +65,7 @@ export default async function handler(req, res) {
         alert.triggeredPrice = price;
         changed = true;
       }
-      if (changed) await redis.set(`hfm:user:${id}`, JSON.stringify(user));
+      if (changed && !subscriptionExpired) await redis.set(`hfm:user:${id}`, JSON.stringify(user));
     }
     return res.status(200).json({ ok: true, users: ids.length, alertsChecked: checked, pushesSent: sent, failures: failed });
   } catch (error) {

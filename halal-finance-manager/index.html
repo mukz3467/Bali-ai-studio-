@@ -6,6 +6,8 @@
   <meta name="theme-color" content="#08111f" />
   <meta name="description" content="Halal-only crypto market watchlist, statistical analysis, and manual trading alerts." />
   <title>Halal Finance Manager Pro</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./icon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
@@ -24,7 +26,7 @@
     <main class="main-content">
       <header class="topbar">
         <div><p class="eyebrow">QUANTITATIVE MARKET MONITOR</p><h1>Market overview</h1><p class="subhead">Spot analysis, probability-aware signals and manual alerts.</p></div>
-        <div class="top-actions"><span class="market-pill"><span class="live-dot"></span> BINANCE SPOT</span><button id="notify-btn" class="button button-secondary">Enable notifications</button></div>
+        <div class="top-actions"><span class="market-pill"><span class="live-dot"></span> BINANCE SPOT</span><button id="notify-btn" class="button button-secondary">Enable background push</button></div>
       </header>
 
       <section class="notice"><span class="notice-icon">✦</span><div><b>Halal-only by design</b><p>Only coins you add after independent Shariah review enter the scanner. Unverified assets are excluded by default.</p></div></section>
@@ -48,7 +50,7 @@
         <p class="helper-text">*The range is a simple volatility-based statistical estimate, not a validated AI forecast or a promise of future price.</p>
       </section>
 
-      <section class="panel" id="quant-lab"><div class="section-head"><div><p class="eyebrow">STATISTICS LAB</p><h2>Forecast & walk-forward test</h2><p class="section-description">Uses up to 200 hourly candles per approved asset. The model is a transparent momentum heuristic, not machine learning.</p></div></div><div id="quant-rows" class="quant-grid"><div class="quant-empty">Waiting for approved assets and historical candles…</div></div><p class="helper-text">Walk-forward results compare the heuristic with a trailing-majority direction baseline. MAE is mean absolute error between the displayed drift estimate and the next hourly move. Signal hit rate excludes weak/no-edge forecasts; coverage shows how often a signal was issued. Historical results are not a calibrated probability and exclude fees, spread, slippage and latency.</p></section>
+      <section class="panel" id="quant-lab"><div class="section-head"><div><p class="eyebrow">STATISTICS LAB</p><h2>Forecast & walk-forward test</h2><p class="section-description">Uses up to 1,000 closed hourly candles per approved asset. The model is a transparent momentum heuristic, not machine learning.</p></div></div><div id="quant-rows" class="quant-grid"><div class="quant-empty">Waiting for approved assets and historical candles…</div></div><p class="helper-text">Walk-forward results compare the heuristic with a trailing-majority baseline. Spot-only bullish signal metrics use an illustrative 0.20% round-trip cost assumption; replace it with your actual fees, spread and slippage. Historical results are not a calibrated probability or guarantee.</p></section>
 
       <div class="lower-grid">
         <section class="panel" id="alerts"><div class="section-head"><div><p class="eyebrow">SIGNAL CENTER</p><h2>Alert rules</h2></div></div>
